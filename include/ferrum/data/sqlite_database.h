@@ -43,6 +43,9 @@ namespace fe {
 #pragma mark -
 #pragma mark sqlite_blob
 
+    /**
+     *  expression of type blob of sqlite.
+     */
     struct sqlite_blob {
         const void *data;
         int size;
@@ -72,10 +75,10 @@ namespace fe {
          *  destructor.
          *  finalize this statement if not finalized.
          */
-        ~sqlite_statement();
+        ~sqlite_statement() noexcept;
 
         /**
-         *  move assignment constructor.
+         *  move constructor.
          */
         sqlite_statement(sqlite_statement &&other) noexcept;
 
@@ -89,23 +92,81 @@ namespace fe {
          */
         void finalize();
 
+        /**
+         *  bind values to placeholder such as ?.
+         */
         template <class... ArgType>
-        void bind_arguments(ArgType &&... bind_args);
+        void bind_values(ArgType &&... bind_args);
 
+        /**
+         *  bind a value to placeholder such as ? or ?NNN (NNN represents an integer literal).
+         *
+         *  @param index zero-based index or index equivalent to NNN
+         *  @param value value to bind to placeholder
+         */
         void bind(int index, int value);
+
+        /**
+         *  @copydoc sqlite_statement::bind(int,int)
+         */
         void bind(int index, std::int64_t value);
+
+        /**
+         *  @copydoc sqlite_statement::bind(int,int)
+         */
         void bind(int index, double value);
+
+        /**
+         *  @copydoc sqlite_statement::bind(int,int)
+         */
         void bind(int index, const std::string &value);
+
+        /**
+         *  @copydoc sqlite_statement::bind(int,int)
+         */
         void bind(int index, const char *value);
+
+        /**
+         *  @copydoc sqlite_statement::bind(int,int)
+         */
         void bind(int index, sqlite_blob value);
 
+        /**
+         *  bind a value to placeholder such as :VVV or @VVV or $VVV (VVV represents an alphanumeric identifier).
+         *
+         *  @param parameter_name parameter name equivalent to VVV
+         *  @param value          value to bind to placeholder
+         */
         void bind(const std::string &parameter_name, int value);
+
+        /**
+         *  @copydoc sqlite_statement::bind(const std::string &,int)
+         */
         void bind(const std::string &parameter_name, std::int64_t value);
+
+        /**
+         *  @copydoc sqlite_statement::bind(const std::string &,int)
+         */
         void bind(const std::string &parameter_name, double value);
+
+        /**
+         *  @copydoc sqlite_statement::bind(const std::string &,int)
+         */
         void bind(const std::string &parameter_name, const std::string &value);
+
+        /**
+         *  @copydoc sqlite_statement::bind(const std::string &,int)
+         */
         void bind(const std::string &parameter_name, const char *value);
+
+        /**
+         *  @copydoc sqlite_statement::bind(const std::string &,int)
+         */
         void bind(const std::string &parameter_name, sqlite_blob value);
 
+        /**
+         *  clear all binding values.
+         */
         void clear_bindings();
 
     private:
@@ -117,25 +178,25 @@ namespace fe {
         void exec();
         void reset();
 
-        int bind_arguments_internal(int);
+        int bind_values_internal(int);
 
         template <class... ArgType>
-        int bind_arguments_internal(int index, int first_arg, ArgType &&... bind_args);
+        int bind_values_internal(int index, int first_arg, ArgType &&... bind_args);
 
         template <class... ArgType>
-        int bind_arguments_internal(int index, std::int64_t first_arg, ArgType &&... bind_args);
+        int bind_values_internal(int index, std::int64_t first_arg, ArgType &&... bind_args);
 
         template <class... ArgType>
-        int bind_arguments_internal(int index, double first_arg, ArgType &&... bind_args);
+        int bind_values_internal(int index, double first_arg, ArgType &&... bind_args);
 
         template <class... ArgType>
-        int bind_arguments_internal(int index, std::string first_arg, ArgType &&... bind_args);
+        int bind_values_internal(int index, std::string first_arg, ArgType &&... bind_args);
 
         template <class... ArgType>
-        int bind_arguments_internal(int index, const char *first_arg, ArgType &&... bind_args);
+        int bind_values_internal(int index, const char *first_arg, ArgType &&... bind_args);
 
         template <class... ArgType>
-        int bind_arguments_internal(int index, sqlite_blob first_arg, ArgType &&... bind_args);
+        int bind_values_internal(int index, sqlite_blob first_arg, ArgType &&... bind_args);
 
         sqlite_database *_db;
         sqlite3_stmt *_stmt;
@@ -152,12 +213,24 @@ namespace fe {
      */
     class sqlite_cursor {
     public:
+        /**
+         *  fetch data from current row.
+         *
+         *  @tparam T int, std::int64_t, double, std::string, const char * or sqlite_blob
+         *
+         *  @param column_index zero-based index
+         */
         template <class T>
         T get(int column_index) const;
 
         template <class T>
         T get(const std::string &column_name) const;
 
+        /**
+         *  get column name.
+         *
+         *  @param column_index zero-based index
+         */
         std::string get_column_name(int column_index) const;
 
         int get_column_index(const std::string &column_name) const;
@@ -239,16 +312,38 @@ namespace fe {
 #pragma mark -
 #pragma mark sqlite_transaction
 
+    /**
+     *  RAII class for transaction.
+     */
     class sqlite_transaction {
     public:
-        ~sqlite_transaction();
+        /**
+         *  destructor.
+         *  rollback transaction if not committed.
+         *  do nothing if committed.
+         */
+        ~sqlite_transaction() noexcept;
+
+        /**
+         *  move constructor.
+         */
         sqlite_transaction(sqlite_transaction &&other) noexcept;
 
+        /**
+         *  move assignment operator.
+         */
         sqlite_transaction &operator=(sqlite_transaction &&other) noexcept;
 
+        /**
+         *  commit transaction.
+         */
         void commit();
 
     private:
+        /**
+         *  constructor.
+         *  begin transaction.
+         */
         sqlite_transaction(sqlite_database *db, sqlite_transaction_mode mode);
 
         sqlite_transaction(const sqlite_transaction &) = delete;
@@ -271,27 +366,68 @@ namespace fe {
 #pragma mark -
 #pragma mark sqlite_database
 
+    /**
+     *  sqlite database wrapper for C++.
+     */
     class sqlite_database {
     public:
+        /**
+         *  constructor.
+         *  create in-memory database.
+         */
         sqlite_database();
+
+        /**
+         *  constructor.
+         *
+         *  @param path path of database file
+         */
         sqlite_database(const std::string &path);
 
-        ~sqlite_database();
+        /**
+         *  destructor.
+         *  close database if not closed.
+         */
+        ~sqlite_database() noexcept;
 
+        /**
+         *  move constructor.
+         */
         sqlite_database(sqlite_database &&other) noexcept;
 
+        /**
+         *  move assignment operator.
+         */
         sqlite_database &operator=(sqlite_database &&other) noexcept;
 
+        /**
+         *  open database.
+         */
         void open();
         void open(const std::string &key);
 
+        /**
+         *  close database.
+         */
         void close();
 
+        /**
+         *  execute sql statement that does not return data (such as select).
+         */
         void exec_sql(const std::string &sql);
 
+        /**
+         *  execute sql statement that does not return data (such as select).
+         *
+         *  @param sql       sql statement
+         *  @param bind_args values to bind to placeholder such as ?
+         */
         template <class... ArgType>
         void exec_sql(const std::string &sql, ArgType &&... bind_args);
 
+        /**
+         *  execute pre-compiled sql statement.
+         */
         void exec(sqlite_statement &statement);
 
         template <class... ArgType>
@@ -304,48 +440,73 @@ namespace fe {
 
         sqlite_statement prepare_statement(const std::string &sql);
 
+        /**
+         *  begin transaction.
+         *
+         *  @param mode transaction mode
+         */
         void begin_transaction(sqlite_transaction_mode mode = sqlite_transaction_mode::deferred);
 
+        /**
+         *  commit transaction.
+         */
         void commit_transaction();
 
+        /**
+         *  rollback transaction.
+         */
         void rollback_transaction();
 
+        /**
+         *  return true if database is open, and false otherwise.
+         */
         bool is_open() const;
-
-        bool in_transaction() const;
 
         sqlite_transaction create_transaction(sqlite_transaction_mode mode = sqlite_transaction_mode::deferred);
 
         const sqlite_listener &get_listener() const;
 
-        template <class Listener>
-        void set_listener(Listener &&listener);
+        void set_listener(const sqlite_listener &listener);
 
+        void set_listener(sqlite_listener &&listener);
+
+        /**
+         *  get user version of database.
+         *  default value is 0.
+         */
         int get_version();
 
+        /**
+         *  update user version of database.
+         *
+         *  @param version new version that must be > 0
+         *  @param mode
+         */
         void update_version(int version, sqlite_transaction_mode mode = sqlite_transaction_mode::deferred);
 
         int get_busy_waiting_interval_ms() const;
 
         void set_busy_waiting_interval_ms(int ms);
 
+        /**
+         *  return file path of database or ":memory:" if in-memory database.
+         */
         const std::string &get_path() const;
 
     private:
         sqlite_database(const sqlite_database &) = delete;
         sqlite_database &operator=(const sqlite_database &) = delete;
 
-        int open_internal();
+        int open_internal() noexcept;
 
-        int close_internal();
+        int close_internal() noexcept;
 
-        sqlite3 *data() const;
+        sqlite3 *handle() const;
 
-        const std::string _path;
+        std::string _path;
         sqlite3 *_db = nullptr;
         sqlite_listener _listener;
         int _busy_waiting_interval_ms = 100;
-        bool _in_transaction = false;
 
         friend class sqlite_statement;
         friend class sqlite_iterator;
@@ -362,7 +523,7 @@ namespace fe {
 #pragma mark -
 #pragma mark sqlite_statement
 
-    inline sqlite_statement::~sqlite_statement() {
+    inline sqlite_statement::~sqlite_statement() noexcept {
         sqlite3_finalize(_stmt);
     }
 
@@ -390,8 +551,8 @@ namespace fe {
     }
 
     template <class... ArgType>
-    void sqlite_statement::bind_arguments(ArgType &&... bind_args) {
-        auto rc = bind_arguments_internal(1, std::forward<ArgType>(bind_args)...);
+    void sqlite_statement::bind_values(ArgType &&... bind_args) {
+        auto rc = bind_values_internal(1, std::forward<ArgType>(bind_args)...);
         if (rc != SQLITE_OK) {
             throw sqlite_exception("failed to bind arguments, result code = " + std::to_string(rc));
         }
@@ -502,9 +663,9 @@ namespace fe {
     }
 
     inline sqlite_statement::sqlite_statement(sqlite_database *db, const std::string &sql) : _db(db) {
-        auto rc = sqlite3_prepare_v2(db->data(), sql.c_str(), static_cast<int>(sql.length()), &_stmt, nullptr);
+        auto rc = sqlite3_prepare_v2(db->handle(), sql.c_str(), static_cast<int>(sql.length()), &_stmt, nullptr);
         if (rc != SQLITE_OK) {
-            throw sqlite_exception("failed to prepare stmt, sql = \"" + sql + "\", result code = " +
+            throw sqlite_exception("failed to prepare statement, sql = \"" + sql + "\", result code = " +
                                    std::to_string(rc));
         }
     }
@@ -537,64 +698,64 @@ namespace fe {
         }
     }
 
-    int sqlite_statement::bind_arguments_internal(int) {
+    int sqlite_statement::bind_values_internal(int) {
         return SQLITE_OK;
     }
 
     template <class... ArgType>
-    int sqlite_statement::bind_arguments_internal(int index, int first_arg, ArgType &&... bind_args) {
+    int sqlite_statement::bind_values_internal(int index, int first_arg, ArgType &&... bind_args) {
         auto rc = sqlite3_bind_int(_stmt, index, first_arg);
         if (rc != SQLITE_OK) {
             return rc;
         }
-        return bind_arguments_internal(index + 1, std::forward<ArgType>(bind_args)...);
+        return bind_values_internal(index + 1, std::forward<ArgType>(bind_args)...);
     }
 
     template <class... ArgType>
-    int sqlite_statement::bind_arguments_internal(int index, std::int64_t first_arg, ArgType &&... bind_args) {
+    int sqlite_statement::bind_values_internal(int index, std::int64_t first_arg, ArgType &&... bind_args) {
         auto rc = sqlite3_bind_int64(_stmt, index, first_arg);
         if (rc != SQLITE_OK) {
             return rc;
         }
-        return bind_arguments_internal(index + 1, std::forward<ArgType>(bind_args)...);
+        return bind_values_internal(index + 1, std::forward<ArgType>(bind_args)...);
     }
 
     template <class... ArgType>
-    int sqlite_statement::bind_arguments_internal(int index, double first_arg, ArgType &&... bind_args) {
+    int sqlite_statement::bind_values_internal(int index, double first_arg, ArgType &&... bind_args) {
         auto rc = sqlite3_bind_double(_stmt, index, first_arg);
         if (rc != SQLITE_OK) {
             return rc;
         }
-        return bind_arguments_internal(index + 1, std::forward<ArgType>(bind_args)...);
+        return bind_values_internal(index + 1, std::forward<ArgType>(bind_args)...);
     }
 
     template <class... ArgType>
-    int sqlite_statement::bind_arguments_internal(int index, std::string first_arg, ArgType &&... bind_args) {
+    int sqlite_statement::bind_values_internal(int index, std::string first_arg, ArgType &&... bind_args) {
         auto rc =
             sqlite3_bind_text(_stmt, index, first_arg.c_str(), static_cast<int>(first_arg.length()), SQLITE_TRANSIENT);
         if (rc != SQLITE_OK) {
             return rc;
         }
-        return bind_arguments_internal(index + 1, std::forward<ArgType>(bind_args)...);
+        return bind_values_internal(index + 1, std::forward<ArgType>(bind_args)...);
     }
 
     template <class... ArgType>
-    int sqlite_statement::bind_arguments_internal(int index, const char *first_arg, ArgType &&... bind_args) {
+    int sqlite_statement::bind_values_internal(int index, const char *first_arg, ArgType &&... bind_args) {
         auto rc =
             sqlite3_bind_text(_stmt, index, first_arg, static_cast<int>(std::strlen(first_arg)), SQLITE_TRANSIENT);
         if (rc != SQLITE_OK) {
             return rc;
         }
-        return bind_arguments_internal(index + 1, std::forward<ArgType>(bind_args)...);
+        return bind_values_internal(index + 1, std::forward<ArgType>(bind_args)...);
     }
 
     template <class... ArgType>
-    int sqlite_statement::bind_arguments_internal(int index, sqlite_blob first_arg, ArgType &&... bind_args) {
+    int sqlite_statement::bind_values_internal(int index, sqlite_blob first_arg, ArgType &&... bind_args) {
         auto rc = sqlite3_bind_blob(_stmt, index, first_arg.data, first_arg.size, SQLITE_TRANSIENT);
         if (rc != SQLITE_OK) {
             return rc;
         }
-        return bind_arguments_internal(index + 1, std::forward<ArgType>(bind_args)...);
+        return bind_values_internal(index + 1, std::forward<ArgType>(bind_args)...);
     }
 
 #pragma mark -
@@ -747,9 +908,13 @@ namespace fe {
 #pragma mark -
 #pragma mark sqlite_transaction
 
-    inline sqlite_transaction::~sqlite_transaction() {
+    inline sqlite_transaction::~sqlite_transaction() noexcept {
         if (_in_transaction && _db) {
-            _db->rollback_transaction();
+            try {
+                _db->rollback_transaction();
+            } catch (...) {
+                // ignore
+            }
         }
     }
 
@@ -789,22 +954,22 @@ namespace fe {
     inline sqlite_database::sqlite_database(const std::string &path) : _path(path) {
     }
 
-    inline sqlite_database::~sqlite_database() {
+    inline sqlite_database::~sqlite_database() noexcept {
         close_internal();
     }
 
     inline sqlite_database::sqlite_database(sqlite_database &&other) noexcept : _db(other._db),
-                                                                                _in_transaction(other._in_transaction) {
+                                                                                _path(std::move(other._path)) {
         other._db = nullptr;
-        other._in_transaction = false;
+        other._path = "";
     }
 
     inline sqlite_database &sqlite_database::operator=(sqlite_database &&other) noexcept {
         _db = other._db;
-        _in_transaction = other._in_transaction;
+        _path = std::move(other._path);
 
         other._db = nullptr;
-        other._in_transaction = false;
+        other._path = "";
 
         return *this;
     }
@@ -841,7 +1006,7 @@ namespace fe {
     template <class... ArgType>
     void sqlite_database::exec_sql(const std::string &sql, ArgType &&... bind_args) {
         sqlite_statement statement(this, sql);
-        statement.bind_arguments(std::forward<ArgType>(bind_args)...);
+        statement.bind_values(std::forward<ArgType>(bind_args)...);
         statement.exec();
         statement.finalize();
     }
@@ -855,7 +1020,7 @@ namespace fe {
     void sqlite_database::exec(sqlite_statement &statement, ArgType &&... bind_args) {
         statement.reset();
         statement.clear_bindings();
-        statement.bind_arguments(std::forward<ArgType>(bind_args)...);
+        statement.bind_values(std::forward<ArgType>(bind_args)...);
         statement.exec();
     }
 
@@ -866,7 +1031,7 @@ namespace fe {
     template <class... ArgType>
     sqlite_query sqlite_database::query(const std::string &sql, ArgType &&... bind_args) {
         sqlite_statement statement(this, sql);
-        statement.bind_arguments(std::forward<ArgType>(bind_args)...);
+        statement.bind_values(std::forward<ArgType>(bind_args)...);
         return sqlite_query(this, std::move(statement));
     }
 
@@ -897,7 +1062,6 @@ namespace fe {
         if (SQLITE_OK != sqlite3_exec(_db, sql, nullptr, nullptr, &error)) {
             throw sqlite_exception(std::string("failed to begin transaction, reason = \"") + error + "\"");
         }
-        _in_transaction = true;
     }
 
     inline void sqlite_database::commit_transaction() {
@@ -905,7 +1069,6 @@ namespace fe {
         if (SQLITE_OK != sqlite3_exec(_db, "COMMIT;", nullptr, nullptr, &error)) {
             throw sqlite_exception(std::string("failed to commit transaction, reason = \"") + error + "\"");
         }
-        _in_transaction = false;
     }
 
     inline void sqlite_database::rollback_transaction() {
@@ -913,15 +1076,10 @@ namespace fe {
         if (SQLITE_OK != sqlite3_exec(_db, "ROLLBACK;", nullptr, nullptr, &error)) {
             throw sqlite_exception(std::string("failed to rollback transaction, reason = \"") + error + "\"");
         }
-        _in_transaction = false;
     }
 
     inline bool sqlite_database::is_open() const {
         return _db;
-    }
-
-    inline bool sqlite_database::in_transaction() const {
-        return _in_transaction;
     }
 
     inline sqlite_transaction sqlite_database::create_transaction(sqlite_transaction_mode mode) {
@@ -932,9 +1090,12 @@ namespace fe {
         return _listener;
     }
 
-    template <class Listener>
-    void sqlite_database::set_listener(Listener &&listener) {
-        _listener = std::forward<Listener>(listener);
+    void sqlite_database::set_listener(const sqlite_listener &listener) {
+        _listener = listener;
+    }
+
+    void sqlite_database::set_listener(sqlite_listener &&listener) {
+        _listener = std::move(listener);
     }
 
     inline int sqlite_database::get_version() {
@@ -983,7 +1144,7 @@ namespace fe {
         return _path;
     }
 
-    inline int sqlite_database::open_internal() {
+    inline int sqlite_database::open_internal() noexcept {
         auto rc = sqlite3_open(_path.c_str(), &_db);
         if (rc != SQLITE_OK) {
             sqlite3_close(_db);
@@ -994,7 +1155,7 @@ namespace fe {
         return rc;
     }
 
-    inline int sqlite_database::close_internal() {
+    inline int sqlite_database::close_internal() noexcept {
         if (!_db) {
             return SQLITE_OK;
         }
@@ -1014,7 +1175,7 @@ namespace fe {
         return rc;
     }
 
-    inline sqlite3 *sqlite_database::data() const {
+    inline sqlite3 *sqlite_database::handle() const {
         return _db;
     }
 }
