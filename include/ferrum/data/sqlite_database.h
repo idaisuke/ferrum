@@ -1,6 +1,6 @@
 // The MIT License (MIT)
 //
-// Copyright (c) 2015 Daisuke Itabashi (itabashi.d@gmail.com)
+// Copyright (c) 2015 Daisuke Itabashi (https://github.com/idaisuke/ferrum)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 #include <functional>
 #include <iterator>
 #include <stdexcept>
+#include <sstream>
 #include <string>
 #include <thread>
 #include <utility>
@@ -44,7 +45,7 @@ namespace fe {
 #pragma mark sqlite_blob
 
     /**
-     *  expression of type blob of sqlite.
+     *  Represents a BLOB object of SQLite.
      */
     struct sqlite_blob {
         const void *data;
@@ -55,7 +56,7 @@ namespace fe {
 #pragma mark sqlite_exception
 
     /**
-     *  exception thrown when sqlite error occurred.
+     *  Represents an exception that is thrown when SQLite error occurred.
      */
     class sqlite_exception : public std::runtime_error {
     public:
@@ -67,49 +68,51 @@ namespace fe {
 #pragma mark sqlite_statement
 
     /**
-     *  pre-compiled sql statement.
+     *  Represents a precompiled SQL statement.
      */
     class sqlite_statement {
     public:
         /**
-         *  destructor.
-         *  finalize this statement if not finalized.
+         *  Destructor.
+         *  Finalizes this statement if not finalized.
          */
         ~sqlite_statement() noexcept;
 
         /**
-         *  move constructor.
+         *  Move constructor.
          */
         sqlite_statement(sqlite_statement &&other) noexcept;
 
         /**
-         *  move assignment operator.
+         *  Move assignment operator.
          */
         sqlite_statement &operator=(sqlite_statement &&other) noexcept;
 
         /**
-         *  finalize this statement.
+         *  Finalizes this statement.
          */
         void finalize();
 
         /**
-         *  bind values to placeholder such as ?.
+         *  Binds the values to the placeholders such as ?.
+         *
+         *  @param bind_args the values to bind to the placeholders.
          */
         template <class... ArgType>
         void bind_values(ArgType &&... bind_args);
 
         /**
-         *  bind a value to placeholder such as ? or ?NNN (NNN represents an integer literal).
+         *  Binds the value to the placeholder such as ? or ?NNN (NNN represents an integer literal).
          *
-         *  @param index zero-based index or index equivalent to NNN
-         *  @param value value to bind to placeholder
+         *  @param index the one-based index or the index equivalent to NNN.
+         *  @param value the value to bind to the placeholder.
          */
         void bind(int index, int value);
 
         /**
          *  @copydoc sqlite_statement::bind(int,int)
          */
-        void bind(int index, std::int64_t value);
+        void bind(int index, std::int_fast64_t value);
 
         /**
          *  @copydoc sqlite_statement::bind(int,int)
@@ -132,17 +135,17 @@ namespace fe {
         void bind(int index, sqlite_blob value);
 
         /**
-         *  bind a value to placeholder such as :VVV or @VVV or $VVV (VVV represents an alphanumeric identifier).
+         *  Binds the value to the placeholder such as :VVV, @VVV or $VVV (VVV represents an alphanumeric identifier).
          *
-         *  @param parameter_name parameter name equivalent to VVV
-         *  @param value          value to bind to placeholder
+         *  @param parameter_name the parameter name equivalent to VVV
+         *  @param value          the value to bind to the placeholder
          */
         void bind(const std::string &parameter_name, int value);
 
         /**
          *  @copydoc sqlite_statement::bind(const std::string &,int)
          */
-        void bind(const std::string &parameter_name, std::int64_t value);
+        void bind(const std::string &parameter_name, std::int_fast64_t value);
 
         /**
          *  @copydoc sqlite_statement::bind(const std::string &,int)
@@ -165,7 +168,7 @@ namespace fe {
         void bind(const std::string &parameter_name, sqlite_blob value);
 
         /**
-         *  clear all binding values.
+         *  Removes all binding values.
          */
         void clear_bindings();
 
@@ -184,7 +187,7 @@ namespace fe {
         int bind_values_internal(int index, int first_arg, ArgType &&... bind_args);
 
         template <class... ArgType>
-        int bind_values_internal(int index, std::int64_t first_arg, ArgType &&... bind_args);
+        int bind_values_internal(int index, std::int_fast64_t first_arg, ArgType &&... bind_args);
 
         template <class... ArgType>
         int bind_values_internal(int index, double first_arg, ArgType &&... bind_args);
@@ -209,32 +212,48 @@ namespace fe {
 #pragma mark sqlite_cursor
 
     /**
-     *  cursor that fetch data from row.
+     *  Represents a cursor to fetch data from a row.
      */
     class sqlite_cursor {
     public:
         /**
-         *  fetch data from current row.
+         *  Gets data from the current row.
          *
-         *  @tparam T int, std::int64_t, double, std::string, const char * or sqlite_blob
+         *  @tparam T int, std::int_fast64_t, double, std::string, const char *, const void * or fe::sqlite_blob.
          *
-         *  @param column_index zero-based index
+         *  @param column_index the zero-based column index.
          */
         template <class T>
         T get(int column_index) const;
 
+        /**
+         *  Gets data for the given column name from the current row,
+         *  or throws an exception if the column name does not exist.
+         *
+         *  @tparam T int, std::int_fast64_t, double, std::string, const char *, const void * or fe::sqlite_blob.
+         *
+         *  @param column_name the column name.
+         */
         template <class T>
         T get(const std::string &column_name) const;
 
         /**
-         *  get column name.
+         *  Returns the column name at the given zero-based column index.
          *
-         *  @param column_index zero-based index
+         *  @param column_index the zero-based index.
          */
         std::string get_column_name(int column_index) const;
 
+        /**
+         *  Returns the zero-based index for the given column name, or -1 if the column does not exist.
+         *
+         *  @param column_name the name of the target column.
+         */
         int get_column_index(const std::string &column_name) const;
 
+        /**
+         *  Returns total number of columns.
+         */
         int get_column_count() const;
 
     private:
@@ -248,6 +267,9 @@ namespace fe {
 #pragma mark -
 #pragma mark sqlite_iterator
 
+    /**
+     *  Provides an STL-style forward iterator to fetch data from SQLite result set.
+     */
     class sqlite_iterator : public std::iterator<std::forward_iterator_tag, sqlite_cursor> {
     public:
         sqlite_iterator(sqlite_iterator &&other) noexcept;
@@ -274,7 +296,7 @@ namespace fe {
         sqlite_database *_db;
         sqlite3_stmt **_stmt;
         sqlite_cursor _cursor;
-        std::uint64_t _rowIndex;
+        std::int_fast64_t _rowIndex;
         int _state;
 
         friend class sqlite_query;
@@ -283,9 +305,21 @@ namespace fe {
 #pragma mark -
 #pragma mark sqlite_query
 
+    /**
+     *  Represents an SQL query.
+     */
     class sqlite_query {
     public:
+        /**
+         *  Returns the iterator pointing to the first row.
+         *
+         *  @attention The iterator got in the past becomes invalid.
+         */
         sqlite_iterator begin();
+
+        /**
+         *  Returns the iterator to end.
+         */
         sqlite_iterator end();
 
     private:
@@ -301,7 +335,7 @@ namespace fe {
 #pragma mark sqlite_transaction_mode
 
     /**
-     *  @sa https://www.sqlite.org/lang_transaction.html
+     *  Describes the SQLite transaction modes.
      */
     enum class sqlite_transaction_mode {
         deferred,
@@ -313,36 +347,35 @@ namespace fe {
 #pragma mark sqlite_transaction
 
     /**
-     *  RAII class for transaction.
+     *  Represents a transaction using the RAII idiom.
      */
     class sqlite_transaction {
     public:
         /**
-         *  destructor.
-         *  rollback transaction if not committed.
-         *  do nothing if committed.
+         *  Destructor.
+         *  Rollbacks this transaction if not committed, or does nothing if committed.
          */
         ~sqlite_transaction() noexcept;
 
         /**
-         *  move constructor.
+         *  Move constructor.
          */
         sqlite_transaction(sqlite_transaction &&other) noexcept;
 
         /**
-         *  move assignment operator.
+         *  Move assignment operator.
          */
         sqlite_transaction &operator=(sqlite_transaction &&other) noexcept;
 
         /**
-         *  commit transaction.
+         *  Commits this transaction.
          */
         void commit();
 
     private:
         /**
-         *  constructor.
-         *  begin transaction.
+         *  Constructor.
+         *  Begin a transaction.
          */
         sqlite_transaction(sqlite_database *db, sqlite_transaction_mode mode);
 
@@ -358,8 +391,18 @@ namespace fe {
 #pragma mark -
 #pragma mark sqlite_listener
 
+    /**
+     *  Used for receiving notifications when the user version of the SQLite database has changed and so on.
+     */
     struct sqlite_listener {
+        /**
+         *  Called when the SQLite database needs to be upgraded.
+         */
         std::function<void(sqlite_database *db, int old_version, int new_version)> on_upgrade;
+
+        /**
+         *  Called when the SQLite database needs to be downgraded.
+         */
         std::function<void(sqlite_database *db, int old_version, int new_version)> on_downgrade;
     };
 
@@ -367,129 +410,168 @@ namespace fe {
 #pragma mark sqlite_database
 
     /**
-     *  sqlite database wrapper for C++.
+     *  Represents an SQLite database.
      */
     class sqlite_database {
     public:
         /**
-         *  constructor.
-         *  create in-memory database.
+         *  Constructor to create an in-memory database.
          */
         sqlite_database();
 
         /**
-         *  constructor.
+         *  Constructor.
          *
-         *  @param path path of database file
+         *  @param path the path of the SQLite database file to open and/or create.
          */
         sqlite_database(const std::string &path);
 
         /**
-         *  destructor.
-         *  close database if not closed.
+         *  Destructor.
+         *  Closes this database if not closed.
          */
         ~sqlite_database() noexcept;
 
         /**
-         *  move constructor.
+         *  Move constructor.
          */
         sqlite_database(sqlite_database &&other) noexcept;
 
         /**
-         *  move assignment operator.
+         *  Move assignment operator.
          */
         sqlite_database &operator=(sqlite_database &&other) noexcept;
 
         /**
-         *  open database.
+         *  Opens the database and/or creates the SQLite database file.
          */
         void open();
-        void open(const std::string &key);
 
         /**
-         *  close database.
+         *  Opens the database and/or creates the SQLite database file.
+         *
+         *  @param passphrase the passphrase to encrypt the database if using sqlcipher and so on.
+         */
+        void open(const std::string &passphrase);
+
+        /**
+         *  Closes this database.
          */
         void close();
 
         /**
-         *  execute sql statement that does not return data (such as select).
+         *  Executes the SQL statement that does not return data.
          */
         void exec_sql(const std::string &sql);
 
         /**
-         *  execute sql statement that does not return data (such as select).
+         *  Executes the SQL statement that does not return data.
          *
-         *  @param sql       sql statement
-         *  @param bind_args values to bind to placeholder such as ?
+         *  @param sql       the single SQL statement.
+         *  @param bind_args the values to bind to the placeholders such as ?
          */
         template <class... ArgType>
         void exec_sql(const std::string &sql, ArgType &&... bind_args);
 
         /**
-         *  execute pre-compiled sql statement.
+         *  Executes the given precompiled SQL statement.
          */
         void exec(sqlite_statement &statement);
 
+        /**
+         *  Executes the given precompiled SQL statement.
+         *  Removes all bindings of the given statement
+         *  and rebind the arguments to the placeholders before the execution.
+         */
         template <class... ArgType>
         void exec(sqlite_statement &statement, ArgType &&... bind_args);
 
+        /**
+         *  Runs the given SQL statement that returns data such as SELECT.
+         */
         sqlite_query query(const std::string &sql);
 
+        /**
+         *  Runs the given SQL statement that returns data such as SELECT.
+         *
+         *  @param sql       the single SQL statement.
+         *  @param bind_args the values to bind to the placeholders such as ?
+         */
         template <class... ArgType>
         sqlite_query query(const std::string &sql, ArgType &&... bind_args);
 
+        /**
+         *  Creates a precompiled SQL statement.
+         */
         sqlite_statement prepare_statement(const std::string &sql);
 
         /**
-         *  begin transaction.
+         *  Begins a transaction.
          *
          *  @param mode transaction mode
          */
         void begin_transaction(sqlite_transaction_mode mode = sqlite_transaction_mode::deferred);
 
         /**
-         *  commit transaction.
+         *  Commits a transaction.
          */
         void commit_transaction();
 
         /**
-         *  rollback transaction.
+         *  Rollbacks a transaction.
          */
         void rollback_transaction();
 
         /**
-         *  return true if database is open, and false otherwise.
+         *  Returns true if the database is open, or false otherwise.
          */
         bool is_open() const;
 
+        /**
+         *  Begins a transaction, and Returns a RAII object.
+         */
         sqlite_transaction create_transaction(sqlite_transaction_mode mode = sqlite_transaction_mode::deferred);
 
+        /**
+         *  Gets the fe::sqlite_listener.
+         */
         const sqlite_listener &get_listener() const;
 
+        /**
+         *  Sets the fe::sqlite_listener.
+         */
         void set_listener(const sqlite_listener &listener);
 
+        /**
+         *  Sets the fe::sqlite_listener.
+         */
         void set_listener(sqlite_listener &&listener);
 
         /**
-         *  get user version of database.
-         *  default value is 0.
+         *  Gets the user version of the database, or 0 that is a default value.
          */
         int get_version();
 
         /**
-         *  update user version of database.
+         *  Updates the user version of the database in a transaction.
          *
-         *  @param version new version that must be > 0
-         *  @param mode
+         *  @param version the new version that must be > 0.
+         *  @param mode    the transaction mode.
          */
         void update_version(int version, sqlite_transaction_mode mode = sqlite_transaction_mode::deferred);
 
+        /**
+         *  Gets the waiting interval time(milliseconds) when SQLITE_BUSY.
+         */
         int get_busy_waiting_interval_ms() const;
 
+        /**
+         *  Sets the waiting interval time(milliseconds) when SQLITE_BUSY.
+         */
         void set_busy_waiting_interval_ms(int ms);
 
         /**
-         *  return file path of database or ":memory:" if in-memory database.
+         *  Returns the file path of the database, or ":memory:" if the in-memory database.
          */
         const std::string &get_path() const;
 
@@ -545,7 +627,9 @@ namespace fe {
     inline void sqlite_statement::finalize() {
         auto rc = sqlite3_finalize(_stmt);
         if (rc != SQLITE_OK) {
-            throw sqlite_exception("failed to finalize statement, result code = " + std::to_string(rc));
+            std::stringstream ss;
+            ss << "Failed to finalize statement, result code = " << rc;
+            throw sqlite_exception(ss.str());
         }
         _stmt = nullptr;
     }
@@ -554,119 +638,159 @@ namespace fe {
     void sqlite_statement::bind_values(ArgType &&... bind_args) {
         auto rc = bind_values_internal(1, std::forward<ArgType>(bind_args)...);
         if (rc != SQLITE_OK) {
-            throw sqlite_exception("failed to bind arguments, result code = " + std::to_string(rc));
+            std::stringstream ss;
+            ss << "Failed to bind int, result code = " << rc;
+            throw sqlite_exception(ss.str());
         }
     }
 
     inline void sqlite_statement::bind(int index, int value) {
-        auto rc = sqlite3_bind_int(_stmt, index + 1, value);
+        auto rc = sqlite3_bind_int(_stmt, index, value);
         if (rc != SQLITE_OK) {
-            throw sqlite_exception("failed to bind int, result code = " + std::to_string(rc));
+            std::stringstream ss;
+            ss << "Failed to bind int, result code = " << rc;
+            throw sqlite_exception(ss.str());
         }
     }
 
-    inline void sqlite_statement::bind(int index, std::int64_t value) {
-        auto rc = sqlite3_bind_int64(_stmt, index + 1, value);
+    inline void sqlite_statement::bind(int index, std::int_fast64_t value) {
+        auto rc = sqlite3_bind_int64(_stmt, index, value);
         if (rc != SQLITE_OK) {
-            throw sqlite_exception("failed to bind std::int64_t, result code = " + std::to_string(rc));
+            std::stringstream ss;
+            ss << "Failed to bind int64, result code = " << rc;
+            throw sqlite_exception(ss.str());
         }
     }
 
     inline void sqlite_statement::bind(int index, double value) {
-        auto rc = sqlite3_bind_double(_stmt, index + 1, value);
+        auto rc = sqlite3_bind_double(_stmt, index, value);
         if (rc != SQLITE_OK) {
-            throw sqlite_exception("failed to bind double, result code = " + std::to_string(rc));
+            std::stringstream ss;
+            ss << "Failed to bind double, result code = " << rc;
+            throw sqlite_exception(ss.str());
         }
     }
 
     inline void sqlite_statement::bind(int index, const std::string &value) {
-        auto rc =
-            sqlite3_bind_text(_stmt, index + 1, value.c_str(), static_cast<int>(value.length()), SQLITE_TRANSIENT);
+        auto rc = sqlite3_bind_text(_stmt, index, value.c_str(), static_cast<int>(value.length()), SQLITE_TRANSIENT);
         if (rc != SQLITE_OK) {
-            throw sqlite_exception("failed to bind std::string, result code = " + std::to_string(rc));
+            std::stringstream ss;
+            ss << "Failed to bind text, result code = " << rc;
+            throw sqlite_exception(ss.str());
         }
     }
 
     inline void sqlite_statement::bind(int index, const char *value) {
-        auto rc = sqlite3_bind_text(_stmt, index + 1, value, static_cast<int>(std::strlen(value)), SQLITE_TRANSIENT);
+        auto rc = sqlite3_bind_text(_stmt, index, value, static_cast<int>(std::strlen(value)), SQLITE_TRANSIENT);
         if (rc != SQLITE_OK) {
-            throw sqlite_exception("failed to bind const char *, result code = " + std::to_string(rc));
+            std::stringstream ss;
+            ss << "Failed to bind text, result code = " << rc;
+            throw sqlite_exception(ss.str());
         }
     }
 
     inline void sqlite_statement::bind(int index, sqlite_blob value) {
-        auto rc = sqlite3_bind_blob(_stmt, index + 1, value.data, value.size, SQLITE_TRANSIENT);
+        auto rc = sqlite3_bind_blob(_stmt, index, value.data, value.size, SQLITE_TRANSIENT);
         if (rc != SQLITE_OK) {
-            throw sqlite_exception("failed to bind const char *, result code = " + std::to_string(rc));
+            std::stringstream ss;
+            ss << "Failed to bind blob, result code = " << rc;
+            throw sqlite_exception(ss.str());
         }
     }
 
     inline void sqlite_statement::bind(const std::string &parameter_name, int value) {
         auto index = sqlite3_bind_parameter_index(_stmt, parameter_name.c_str());
         if (index == 0) {
-            throw sqlite_exception("no matching parameter named '" + parameter_name + "' is found.");
+            std::string what;
+            what.append("No matching parameter named '");
+            what.append(parameter_name);
+            what.append("' is found.");
+            throw sqlite_exception(what);
         }
 
-        bind(index - 1, value);
+        bind(index, value);
     }
 
-    inline void sqlite_statement::bind(const std::string &parameter_name, std::int64_t value) {
+    inline void sqlite_statement::bind(const std::string &parameter_name, std::int_fast64_t value) {
         auto index = sqlite3_bind_parameter_index(_stmt, parameter_name.c_str());
         if (index == 0) {
-            throw sqlite_exception("no matching parameter named '" + parameter_name + "' is found.");
+            std::string what;
+            what.append("No matching parameter named '");
+            what.append(parameter_name);
+            what.append("' is found.");
+            throw sqlite_exception(what);
         }
 
-        bind(index - 1, value);
+        bind(index, value);
     }
 
     inline void sqlite_statement::bind(const std::string &parameter_name, double value) {
         auto index = sqlite3_bind_parameter_index(_stmt, parameter_name.c_str());
         if (index == 0) {
-            throw sqlite_exception("no matching parameter named '" + parameter_name + "' is found.");
+            std::string what;
+            what.append("No matching parameter named '");
+            what.append(parameter_name);
+            what.append("' is found.");
+            throw sqlite_exception(what);
         }
 
-        bind(index - 1, value);
+        bind(index, value);
     }
 
     inline void sqlite_statement::bind(const std::string &parameter_name, const std::string &value) {
         auto index = sqlite3_bind_parameter_index(_stmt, parameter_name.c_str());
         if (index == 0) {
-            throw sqlite_exception("no matching parameter named '" + parameter_name + "' is found.");
+            std::string what;
+            what.append("No matching parameter named '");
+            what.append(parameter_name);
+            what.append("' is found.");
+            throw sqlite_exception(what);
         }
 
-        bind(index - 1, value);
+        bind(index, value);
     }
 
     inline void sqlite_statement::bind(const std::string &parameter_name, const char *value) {
         auto index = sqlite3_bind_parameter_index(_stmt, parameter_name.c_str());
         if (index == 0) {
-            throw sqlite_exception("no matching parameter named '" + parameter_name + "' is found.");
+            std::string what;
+            what.append("No matching parameter named '");
+            what.append(parameter_name);
+            what.append("' is found.");
+            throw sqlite_exception(what);
         }
 
-        bind(index - 1, value);
+        bind(index, value);
     }
 
     inline void sqlite_statement::bind(const std::string &parameter_name, sqlite_blob value) {
         auto index = sqlite3_bind_parameter_index(_stmt, parameter_name.c_str());
         if (index == 0) {
-            throw sqlite_exception("no matching parameter named '" + parameter_name + "' is found.");
+            std::string what;
+            what.append("No matching parameter named '");
+            what.append(parameter_name);
+            what.append("' is found.");
+            throw sqlite_exception(what);
         }
 
-        bind(index - 1, value);
+        bind(index, std::move(value));
     }
 
     inline void sqlite_statement::clear_bindings() {
         auto rc = sqlite3_clear_bindings(_stmt);
         if (rc != SQLITE_OK) {
-            throw sqlite_exception("failed to clear bindings, result code = " + std::to_string(rc));
+            std::stringstream ss;
+            ss << "Failed to clear bindings, result code = " << rc;
+            throw sqlite_exception(ss.str());
         }
     }
 
     inline sqlite_statement::sqlite_statement(sqlite_database *db, const std::string &sql) : _db(db) {
         auto rc = sqlite3_prepare_v2(db->handle(), sql.c_str(), static_cast<int>(sql.length()), &_stmt, nullptr);
         if (rc != SQLITE_OK) {
-            throw sqlite_exception("failed to prepare statement, sql = \"" + sql + "\", result code = " +
-                                   std::to_string(rc));
+            std::stringstream ss;
+            ss << "Failed to prepare statement, SQL = \"" << sql << "\", result code = " << rc;
+            throw sqlite_exception(ss.str());
         }
     }
 
@@ -683,18 +807,22 @@ namespace fe {
         }
 
         if (rc == SQLITE_ROW) {
-            throw sqlite_exception("this method must not be any sql statement that returns data.");
+            throw sqlite_exception("This method must not be an SQL statement that returns data.");
         }
 
         if (rc != SQLITE_DONE) {
-            throw sqlite_exception("failed to exec statement, result code = " + std::to_string(rc));
+            std::stringstream ss;
+            ss << "Failed to step statement, result code = " << rc;
+            throw sqlite_exception(ss.str());
         }
     }
 
     inline void sqlite_statement::reset() {
         auto rc = sqlite3_reset(_stmt);
         if (rc != SQLITE_OK) {
-            throw sqlite_exception("failed to reset statement, result code = " + std::to_string(rc));
+            std::stringstream ss;
+            ss << "Failed to reset statement, result code = " << rc;
+            throw sqlite_exception(ss.str());
         }
     }
 
@@ -712,7 +840,7 @@ namespace fe {
     }
 
     template <class... ArgType>
-    int sqlite_statement::bind_values_internal(int index, std::int64_t first_arg, ArgType &&... bind_args) {
+    int sqlite_statement::bind_values_internal(int index, std::int_fast64_t first_arg, ArgType &&... bind_args) {
         auto rc = sqlite3_bind_int64(_stmt, index, first_arg);
         if (rc != SQLITE_OK) {
             return rc;
@@ -767,7 +895,7 @@ namespace fe {
     }
 
     template <>
-    inline std::int64_t sqlite_cursor::get(int column_index) const {
+    inline std::int_fast64_t sqlite_cursor::get(int column_index) const {
         return sqlite3_column_int64(*_stmt, column_index);
     }
 
@@ -796,11 +924,23 @@ namespace fe {
         return sqlite3_column_blob(*_stmt, column_index);
     }
 
+    template <>
+    inline sqlite_blob sqlite_cursor::get(int column_index) const {
+        sqlite_blob blob;
+        blob.data = sqlite3_column_text(*_stmt, column_index);
+        blob.size = static_cast<int>(std::strlen(reinterpret_cast<const char *>(blob.data)) - 1);
+        return blob;
+    }
+
     template <class T>
     T sqlite_cursor::get(const std::string &column_name) const {
         auto index = get_column_index(column_name);
         if (index == -1) {
-            throw sqlite_exception("column named '" + column_name + "' does not exist.");
+            std::string what;
+            what.append("Column named '");
+            what.append(column_name);
+            what.append("' does not exist.");
+            throw sqlite_exception(what);
         }
         return get<T>(index);
     }
@@ -835,7 +975,7 @@ namespace fe {
                                                                                 _state(other._state) {
         other._db = nullptr;
         other._stmt = nullptr;
-        other._rowIndex = 0;
+        other._rowIndex = -1;
         other._state = SQLITE_DONE;
     }
 
@@ -847,7 +987,7 @@ namespace fe {
 
         other._db = nullptr;
         other._stmt = nullptr;
-        other._rowIndex = 0;
+        other._rowIndex = -1;
         other._state = SQLITE_DONE;
         return *this;
     }
@@ -858,6 +998,13 @@ namespace fe {
             std::this_thread::sleep_for(std::chrono::milliseconds(_db->get_busy_waiting_interval_ms()));
             _state = sqlite3_step(*_stmt);
         }
+
+        if (_state != SQLITE_ROW && _state != SQLITE_DONE) {
+            std::stringstream ss;
+            ss << "Failed to step statement, result code = " << _state;
+            throw sqlite_exception(ss.str());
+        }
+
         _rowIndex++;
         return *this;
     }
@@ -882,11 +1029,12 @@ namespace fe {
     }
 
     inline sqlite_iterator::sqlite_iterator()
-        : _db(nullptr), _stmt(nullptr), _cursor(_stmt), _rowIndex(0), _state(SQLITE_DONE) {
+        : _db(nullptr), _stmt(nullptr), _cursor(_stmt), _rowIndex(-1), _state(SQLITE_DONE) {
     }
 
     inline sqlite_iterator::sqlite_iterator(sqlite_database *db, sqlite3_stmt **stmt)
-        : _db(db), _stmt(stmt), _cursor(_stmt), _rowIndex(0), _state(sqlite3_step(*stmt)) {
+        : _db(db), _stmt(stmt), _cursor(_stmt), _rowIndex(-1) {
+        ++(*this);
     }
 
 #pragma mark -
@@ -977,30 +1125,33 @@ namespace fe {
     inline void sqlite_database::open() {
         auto rc = open_internal();
         if (rc != SQLITE_OK) {
-            throw sqlite_exception("failed to open db, result code = " + std::to_string(rc));
+            std::stringstream ss;
+            ss << "Failed to open database, result code = " << rc;
+            throw sqlite_exception(ss.str());
         }
     }
 
-    inline void sqlite_database::open(const std::string &key) {
+    inline void sqlite_database::open(const std::string &passphrase) {
         open();
 
 #ifdef SQLITE_HAS_CODEC
-        sqlite3_key(_db, key.c_str(), key.length());
+        sqlite3_key(_db, passphrase.c_str(), passphrase.length());
 #endif
     }
 
     inline void sqlite_database::close() {
         auto rc = close_internal();
         if (rc != SQLITE_OK) {
-            throw sqlite_exception("failed to close db, result code = " + std::to_string(rc));
+            std::stringstream ss;
+            ss << "Failed to close database, result code = " << rc;
+            throw sqlite_exception(ss.str());
         }
     }
 
     inline void sqlite_database::exec_sql(const std::string &sql) {
-        char *error = nullptr;
-        if (SQLITE_OK != sqlite3_exec(_db, sql.c_str(), nullptr, nullptr, &error)) {
-            throw sqlite_exception("failed to exec sql, sql = \"" + sql + "\", reason = \"" + error + "\"");
-        }
+        sqlite_statement statement(this, sql);
+        statement.exec();
+        statement.finalize();
     }
 
     template <class... ArgType>
@@ -1040,7 +1191,6 @@ namespace fe {
     }
 
     inline void sqlite_database::begin_transaction(sqlite_transaction_mode mode) {
-        char *error = nullptr;
         const char *sql;
         switch (mode) {
             case sqlite_transaction_mode::deferred:
@@ -1056,26 +1206,20 @@ namespace fe {
                 break;
 
             default:
-                throw sqlite_exception("invalid sqlite transaction mode, = " + std::to_string(static_cast<int>(mode)));
+                std::stringstream ss;
+                ss << "Invalid transaction mode, = " << static_cast<int>(mode);
+                throw sqlite_exception(ss.str());
         }
 
-        if (SQLITE_OK != sqlite3_exec(_db, sql, nullptr, nullptr, &error)) {
-            throw sqlite_exception(std::string("failed to begin transaction, reason = \"") + error + "\"");
-        }
+        exec_sql(sql);
     }
 
     inline void sqlite_database::commit_transaction() {
-        char *error = nullptr;
-        if (SQLITE_OK != sqlite3_exec(_db, "COMMIT;", nullptr, nullptr, &error)) {
-            throw sqlite_exception(std::string("failed to commit transaction, reason = \"") + error + "\"");
-        }
+        exec_sql("COMMIT;");
     }
 
     inline void sqlite_database::rollback_transaction() {
-        char *error = nullptr;
-        if (SQLITE_OK != sqlite3_exec(_db, "ROLLBACK;", nullptr, nullptr, &error)) {
-            throw sqlite_exception(std::string("failed to rollback transaction, reason = \"") + error + "\"");
-        }
+        exec_sql("ROLLBACK;");
     }
 
     inline bool sqlite_database::is_open() const {
@@ -1110,6 +1254,10 @@ namespace fe {
     }
 
     inline void sqlite_database::update_version(int version, sqlite_transaction_mode mode) {
+        if (version < 1) {
+            throw sqlite_exception("Invalid version, must be > 0");
+        }
+
         auto old_version = get_version();
         if (old_version == version) {
             return;
@@ -1127,7 +1275,9 @@ namespace fe {
             }
         }
 
-        exec_sql("PRAGMA user_version = " + std::to_string(version) + ";");
+        std::stringstream ss;
+        ss << "PRAGMA user_version = " << version << ";";
+        exec_sql(ss.str());
 
         transaction.commit();
     }

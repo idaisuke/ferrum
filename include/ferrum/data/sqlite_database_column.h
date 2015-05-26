@@ -1,6 +1,6 @@
 // The MIT License (MIT)
 //
-// Copyright (c) 2015 Daisuke Itabashi (itabashi.d@gmail.com)
+// Copyright (c) 2015 Daisuke Itabashi (https://github.com/idaisuke/ferrum)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
