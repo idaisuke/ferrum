@@ -38,6 +38,20 @@ namespace fe {
      *  All iterators are unaffected by all operations in this class,
      *  because all mutative operations(such as push_bash) make a fresh copy of the underlying container.
      *
+     *  ~~~~~~~~~~
+     *  fe::copy_on_write_vector<int> vec = {2, 3, 5, 7, 11, 13};
+     *
+     *  // get a read-only snapshot.
+     *  auto snapshot = vec.lock();
+     *
+     *  for (int elem : snapshot) {
+     *      printf("elem = %d\n", elem);
+     *
+     *      // mutative operation is possible during scanning of the iterator.
+     *      vec.push_back(999);
+     *  }
+     *  ~~~~~~~~~~
+     *
      *  @tparam T         The type of the elements
      *  @tparam Allocator An allocator that is used to acquire memory to store the elements
      */
