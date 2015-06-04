@@ -23,6 +23,7 @@
 #ifndef __ferrum__copy_on_write_vector__
 #define __ferrum__copy_on_write_vector__
 
+#include <algorithm>
 #include <initializer_list>
 #include <iterator>
 #include <memory>
@@ -33,7 +34,7 @@
 namespace fe {
 
     /**
-     *  Represents a thread-safe sequence container like std::vector.
+     *  Represents a thread-safe sequence container for C++11.
      *  All iterators are unaffected by all operations in this class,
      *  because all mutative operations(such as push_bash) make a fresh copy of the underlying container.
      *
@@ -96,15 +97,15 @@ namespace fe {
         class const_random_access_iterator
             : public std::iterator<std::random_access_iterator_tag, value_type, difference_type, pointer, reference> {
         public:
-            const value_type &operator*() const {
+            const_reference operator*() const {
                 return *_itr;
             }
 
-            const value_type &operator->() const {
+            const_reference operator->() const {
                 return _itr.operator->();
             }
 
-            const value_type &operator[](size_type n) const {
+            const_reference operator[](size_type n) const {
                 return _itr[n];
             }
 
@@ -309,35 +310,35 @@ namespace fe {
             /**
              *  Gets the n-th element with bounds checking.
              */
-            const value_type &at(size_type n) const {
+            const_reference at(size_type n) const {
                 return _shared_container->at(n);
             }
 
             /**
              *  Gets the n-th element.
              */
-            const value_type &operator[](size_type n) const {
+            const_reference operator[](size_type n) const {
                 return (*_shared_container)[n];
             }
 
             /**
              *  Gets the first element.
              */
-            const value_type &front() const {
+            const_reference front() const {
                 return _shared_container->front();
             }
 
             /**
              *  Gets the last element.
              */
-            const value_type &back() const {
+            const_reference back() const {
                 return _shared_container->back();
             }
 
             /**
              *  Gets the pointer to the underlying array.
              */
-            const value_type *data() const noexcept {
+            const_pointer data() const noexcept {
                 return _shared_container->data();
             }
 
@@ -401,8 +402,7 @@ namespace fe {
          *  @param value     The value to initialize elements with.
          *  @param allocator The user supplied allocator.
          */
-        copy_on_write_vector(size_type count, const value_type &value,
-                             const allocator_type &allocator = allocator_type())
+        copy_on_write_vector(size_type count, const_reference value, const allocator_type &allocator = allocator_type())
             : _shared_container(std::make_shared<container_type>(count, value, allocator)) {
         }
 
@@ -477,7 +477,7 @@ namespace fe {
         }
 
         /**
-         *  Constructs the container with the copy of the elements of other.
+         *  Constructs the container with the copy of the elements of the other.
          *
          *  @param other Another container.
          */
@@ -485,7 +485,7 @@ namespace fe {
         }
 
         /**
-         *  Constructs the container with the copy of the elements of other.
+         *  Constructs the container with the copy of the elements of the other.
          *
          *  @param other     Another container.
          *  @param allocator The user supplied allocator.
@@ -577,11 +577,11 @@ namespace fe {
          *  @param count The number of elements.
          *  @param value The value to initialize elements with.
          */
-        void assign(size_type count, const value_type &value) {
+        void assign(size_type count, const_reference value) {
             std::lock_guard<std::mutex> lock(_mutex);
             auto copied_container = std::make_shared<container_type>(*_shared_container);
             copied_container->assign(count, value);
-            _shared_container = copied_container;
+            _shared_container = std::move(copied_container);
         }
 
         /**
@@ -596,7 +596,7 @@ namespace fe {
             std::lock_guard<std::mutex> lock(_mutex);
             auto copied_container = std::make_shared<container_type>(*_shared_container);
             copied_container->assign(first, last);
-            _shared_container = copied_container;
+            _shared_container = std::move(copied_container);
         }
 
         /**
@@ -609,7 +609,7 @@ namespace fe {
             std::lock_guard<std::mutex> lock(_mutex);
             auto copied_container = std::make_shared<container_type>(*_shared_container);
             copied_container->assign(std::move(initializer_list));
-            _shared_container = copied_container;
+            _shared_container = std::move(copied_container);
         }
 
         /**
@@ -622,28 +622,28 @@ namespace fe {
         /**
          *  Gets the n-th element with bounds checking.
          */
-        const value_type &at(size_type n) const {
+        const_reference at(size_type n) const {
             return lock().at(n);
         }
 
         /**
          *  Gets the n-th element.
          */
-        const value_type &operator[](size_type n) const {
+        const_reference operator[](size_type n) const {
             return lock()[n];
         }
 
         /**
          *  Gets the first element.
          */
-        const value_type &front() const {
+        const_reference front() const {
             return lock().front();
         }
 
         /**
          *  Gets the last element.
          */
-        const value_type &back() const {
+        const_reference back() const {
             return lock().back();
         }
 
@@ -685,7 +685,7 @@ namespace fe {
             std::lock_guard<std::mutex> lock(_mutex);
             auto copied_container = std::make_shared<container_type>(*_shared_container);
             copied_container->reserve(new_cap);
-            _shared_container = copied_container;
+            _shared_container = std::move(copied_container);
         }
 
         /**
@@ -703,7 +703,7 @@ namespace fe {
             std::lock_guard<std::mutex> lock(_mutex);
             auto copied_container = std::make_shared<container_type>(*_shared_container);
             copied_container->shrink_to_fit();
-            _shared_container = copied_container;
+            _shared_container = std::move(copied_container);
         }
 
         /**
@@ -715,7 +715,7 @@ namespace fe {
             auto copied_container = std::make_shared<container_type>(
                 std::allocator_traits<allocator_type>::select_on_container_copy_construction(get_allocator()));
             copied_container->reserve(_shared_container->capacity());
-            _shared_container = copied_container;
+            _shared_container = std::move(copied_container);
         }
 
         /**
@@ -725,11 +725,11 @@ namespace fe {
          *  @param index The index to insert.
          *  @param value The value to insert.
          */
-        void insert(size_type index, const value_type &value) {
+        void insert_at(size_type index, const_reference value) {
             std::lock_guard<std::mutex> lock(_mutex);
             auto copied_container = std::make_shared<container_type>(*_shared_container);
             copied_container->insert(copied_container->begin() + index, value);
-            _shared_container = copied_container;
+            _shared_container = std::move(copied_container);
         }
 
         /**
@@ -739,11 +739,11 @@ namespace fe {
          *  @param index The index to insert.
          *  @param value The value to insert.
          */
-        void insert(size_type index, value_type &&value) {
+        void insert_at(size_type index, value_type &&value) {
             std::lock_guard<std::mutex> lock(_mutex);
             auto copied_container = std::make_shared<container_type>(*_shared_container);
             copied_container->insert(copied_container->begin() + index, std::move(value));
-            _shared_container = copied_container;
+            _shared_container = std::move(copied_container);
         }
 
         /**
@@ -754,11 +754,11 @@ namespace fe {
          *  @param count The number of elements to insert.
          *  @param value The value to insert.
          */
-        void insert(size_type index, size_type count, const value_type &value) {
+        void insert_at(size_type index, size_type count, const_reference value) {
             std::lock_guard<std::mutex> lock(_mutex);
             auto copied_container = std::make_shared<container_type>(*_shared_container);
             copied_container->insert(copied_container->begin() + index, count, value);
-            _shared_container = copied_container;
+            _shared_container = std::move(copied_container);
         }
 
         /**
@@ -770,11 +770,11 @@ namespace fe {
          *  @param last  The iterator that appoints the last next of the range.
          */
         template <class InputIterator>
-        void insert(size_type index, InputIterator first, InputIterator last) {
+        void insert_at(size_type index, InputIterator first, InputIterator last) {
             std::lock_guard<std::mutex> lock(_mutex);
             auto copied_container = std::make_shared<container_type>(*_shared_container);
             copied_container->insert(copied_container->begin() + index, first, last);
-            _shared_container = copied_container;
+            _shared_container = std::move(copied_container);
         }
 
         /**
@@ -784,11 +784,11 @@ namespace fe {
          *  @param index            The index to insert.
          *  @param initializer_list The initializer list to insert.
          */
-        void insert(size_type index, std::initializer_list<value_type> initializer_list) {
+        void insert_at(size_type index, std::initializer_list<value_type> initializer_list) {
             std::lock_guard<std::mutex> lock(_mutex);
             auto copied_container = std::make_shared<container_type>(*_shared_container);
             copied_container->insert(copied_container->begin() + index, std::move(initializer_list));
-            _shared_container = copied_container;
+            _shared_container = std::move(copied_container);
         }
 
         /**
@@ -799,25 +799,100 @@ namespace fe {
          *  @param args  The arguments to forward to the constructor of the element.
          */
         template <class... ArgTypes>
-        void emplace(size_type index, ArgTypes &&... args) {
+        void emplace_at(size_type index, ArgTypes &&... args) {
             std::lock_guard<std::mutex> lock(_mutex);
             auto copied_container = std::make_shared<container_type>(*_shared_container);
             copied_container->emplace(copied_container->begin() + index, std::forward<ArgTypes>(args)...);
-            _shared_container = copied_container;
+            _shared_container = std::move(copied_container);
         }
 
         /**
-         *  Replaces the element at the given index with the given value.
+         *  Replaces the first element that compare equal to old_value with a copy of new_value.
+         *  This operation makes a fresh copy of the underlying container.
+         *
+         *  @param old_value The value to be replaced.
+         *  @param new_value The value to replace.
+         *
+         *  @return true if the element was replaced.
+         */
+        bool replace(const_reference old_value, const_reference new_value) {
+            std::lock_guard<std::mutex> lock(_mutex);
+            auto it = std::find(_shared_container->begin(), _shared_container->end(), old_value);
+            if (it == _shared_container->end()) {
+                return false;
+            } else {
+                auto copied_container = std::make_shared<container_type>(*_shared_container);
+                (*copied_container)[it - _shared_container->begin()] = new_value;
+                _shared_container = std::move(copied_container);
+                return true;
+            }
+        }
+
+        /**
+         *  Replaces the first element that compare equal to old_value with new_value.
+         *  If the element was not replaced, the given value is not moved.
+         *  This operation makes a fresh copy of the underlying container.
+         *
+         *  @param old_value The value to be replaced.
+         *  @param new_value The value to be moved into the replacement element.
+         *
+         *  @return true if the element was replaced.
+         */
+        bool replace(const_reference old_value, value_type &&new_value) {
+            std::lock_guard<std::mutex> lock(_mutex);
+            auto it = std::find(_shared_container->begin(), _shared_container->end(), old_value);
+            if (it == _shared_container->end()) {
+                return false;
+            } else {
+                auto copied_container = std::make_shared<container_type>(*_shared_container);
+                (*copied_container)[it - _shared_container->begin()] = std::move(new_value);
+                _shared_container = std::move(copied_container);
+                return true;
+            }
+        }
+
+        /**
+         *  Replaces all elements that compare equal to old_value with a copy of new_value.
+         *  This operation makes a fresh copy of the underlying container.
+         *
+         *  @param old_value The value to be replaced.
+         *  @param new_value The value to replace.
+         *
+         *  @return The number of elements replaced.
+         */
+        size_type replace_all(const_reference old_value, const_reference new_value) {
+            std::lock_guard<std::mutex> lock(_mutex);
+            auto copied_container = _shared_container;
+            auto first = _shared_container->begin();
+            auto last = _shared_container->end();
+            size_type result = 0;
+            while (first != last) {
+                if (*first == old_value) {
+                    if (result++ == 0) {
+                        copied_container = std::make_shared<container_type>(*copied_container);
+                        first = copied_container->begin() + (first - _shared_container->begin());
+                        last = copied_container->end();
+                    }
+                    (*copied_container)[first - copied_container->begin()] = new_value;
+                }
+                ++first;
+            }
+            _shared_container = std::move(copied_container);
+            return result;
+        }
+
+        /**
+         *  Replaces the element at the given index with a copy of the given value.
          *  This operation makes a fresh copy of the underlying container.
          *
          *  @param index The index to replace.
          *  @param value The value to replace.
          */
-        void replace(size_type index, const value_type &value) {
+        void replace_at(size_type index, const_reference value) {
             std::lock_guard<std::mutex> lock(_mutex);
             auto copied_container = std::make_shared<container_type>(*_shared_container);
             (*copied_container)[index] = value;
-            _shared_container = copied_container;
+            _shared_container = std::move(copied_container);
         }
 
         /**
@@ -825,13 +900,130 @@ namespace fe {
          *  This operation makes a fresh copy of the underlying container.
          *
          *  @param index The index to replace.
-         *  @param value The value to replace.
+         *  @param value The value to be moved into the replacement element.
          */
-        void replace(size_type index, value_type &&value) {
+        void replace_at(size_type index, value_type &&value) {
             std::lock_guard<std::mutex> lock(_mutex);
             auto copied_container = std::make_shared<container_type>(*_shared_container);
             (*copied_container)[index] = std::move(value);
-            _shared_container = copied_container;
+            _shared_container = std::move(copied_container);
+        }
+
+        /**
+         *  Replaces the first element for which the given predicate returns true with a copy of the given value.
+         *  This operation makes a fresh copy of the underlying container.
+         *
+         *  @param pred  The unary predicate which returns ​true if the element value should be replaced.
+         *  @param value The value to replace.
+         *
+         *  @return true if the element was replaced.
+         */
+        template <class UnaryPredicate>
+        bool replace_if(UnaryPredicate pred, const_reference value) {
+            std::lock_guard<std::mutex> lock(_mutex);
+            auto it = std::find_if(_shared_container->begin(), _shared_container->end(), std::move(pred));
+            if (it == _shared_container->end()) {
+                return false;
+            } else {
+                auto copied_container = std::make_shared<container_type>(*_shared_container);
+                (*copied_container)[it - _shared_container->begin()] = value;
+                _shared_container = std::move(copied_container);
+                return true;
+            }
+        }
+
+        /**
+         *  Replaces the first element for which the given predicate returns true with the given value.
+         *  If the element was not replaced, the given value is not moved.
+         *  This operation makes a fresh copy of the underlying container.
+         *
+         *  @param pred  The unary predicate which returns ​true if the element value should be replaced.
+         *  @param value The value to be moved into the replacement element.
+         *
+         *  @return true if the element was replaced.
+         */
+        template <class UnaryPredicate>
+        bool replace_if(UnaryPredicate pred, value_type &&value) {
+            std::lock_guard<std::mutex> lock(_mutex);
+            auto it = std::find_if(_shared_container->begin(), _shared_container->end(), std::move(pred));
+            if (it == _shared_container->end()) {
+                return false;
+            } else {
+                auto copied_container = std::make_shared<container_type>(*_shared_container);
+                (*copied_container)[it - _shared_container->begin()] = std::move(value);
+                _shared_container = std::move(copied_container);
+                return true;
+            }
+        }
+
+        /**
+         *  Replaces all elements for which the given predicate returns true with copies of the given value.
+         *  This operation makes a fresh copy of the underlying container.
+         *
+         *  @param pred  The unary predicate which returns ​true if the element value should be replaced.
+         *  @param value The value to replace.
+         *
+         *  @return The number of elements replaced.
+         */
+        template <class UnaryPredicate>
+        size_type replace_all_if(UnaryPredicate pred, const_reference value) {
+            std::lock_guard<std::mutex> lock(_mutex);
+            auto copied_container = _shared_container;
+            auto first = _shared_container->begin();
+            auto last = _shared_container->end();
+            size_type result = 0;
+            while (first != last) {
+                if (pred(*first)) {
+                    if (result++ == 0) {
+                        copied_container = std::make_shared<container_type>(*copied_container);
+                        first = copied_container->begin() + (first - _shared_container->begin());
+                        last = copied_container->end();
+                    }
+                    (*copied_container)[first - copied_container->begin()] = value;
+                }
+                ++first;
+            }
+            _shared_container = std::move(copied_container);
+            return result;
+        }
+
+        /**
+         *  Erases the first element that compare equal to the given value.
+         *  This operation makes a fresh copy of the underlying container.
+         *
+         *  @param value The value to be erased.
+         *
+         *  @return true if the element was erased.
+         */
+        bool erase(const_reference value) {
+            std::lock_guard<std::mutex> lock(_mutex);
+            auto it = std::find(_shared_container->begin(), _shared_container->end(), value);
+            if (it == _shared_container->end()) {
+                return false;
+            } else {
+                auto copied_container = std::make_shared<container_type>(*_shared_container);
+                copied_container->erase(copied_container->begin() + (it - _shared_container->begin()));
+                _shared_container = std::move(copied_container);
+                return true;
+            }
+        }
+
+        /**
+         *  Erases all elements that compare equal to the given value.
+         *  This operation makes a fresh copy of the underlying container.
+         *
+         *  @param value The value to be erased.
+         *
+         *  @return The number of elements erased.
+         */
+        size_type erase_all(const_reference value) {
+            std::lock_guard<std::mutex> lock(_mutex);
+            auto copied_container = std::make_shared<container_type>(*_shared_container);
+            auto it = std::remove(copied_container->begin(), copied_container->end(), value);
+            auto result = copied_container->end() - it;
+            copied_container->erase(it, copied_container->end());
+            _shared_container = std::move(copied_container);
+            return result;
         }
 
         /**
@@ -840,11 +1032,11 @@ namespace fe {
          *
          *  @param index The index to erase.
          */
-        void erase(size_type index) {
+        void erase_at(size_type index) {
             std::lock_guard<std::mutex> lock(_mutex);
             auto copied_container = std::make_shared<container_type>(*_shared_container);
             copied_container->erase(copied_container->begin() + index);
-            _shared_container = copied_container;
+            _shared_container = std::move(copied_container);
         }
 
         /**
@@ -854,11 +1046,52 @@ namespace fe {
          *  @param first The index of the top of the range.
          *  @param last  The index of the last next of the range.
          */
-        void erase(size_type first, size_type last) {
+        void erase_range(size_type first, size_type last) {
             std::lock_guard<std::mutex> lock(_mutex);
             auto copied_container = std::make_shared<container_type>(*_shared_container);
             copied_container->erase(copied_container->begin() + first, copied_container->begin() + last);
-            _shared_container = copied_container;
+            _shared_container = std::move(copied_container);
+        }
+
+        /**
+         *  Erases the first element for which the given predicate returns true with the given value.
+         *  This operation makes a fresh copy of the underlying container.
+         *
+         *  @param pred The unary predicate which returns ​true if the element value should be erased.
+         *
+         *  @return true if the element was erased.
+         */
+        template <class UnaryPredicate>
+        bool erase_if(UnaryPredicate pred) {
+            std::lock_guard<std::mutex> lock(_mutex);
+            auto it = std::find_if(_shared_container->begin(), _shared_container->end(), std::move(pred));
+            if (it == _shared_container->end()) {
+                return false;
+            } else {
+                auto copied_container = std::make_shared<container_type>(*_shared_container);
+                copied_container->erase(copied_container->begin() + (it - _shared_container->begin()));
+                _shared_container = std::move(copied_container);
+                return true;
+            }
+        }
+
+        /**
+         *  Erases all elements for which the given predicate returns true with the given value.
+         *  This operation makes a fresh copy of the underlying container.
+         *
+         *  @param pred The unary predicate which returns ​true if the element value should be erased.
+         *
+         *  @return The number of elements erased.
+         */
+        template <class UnaryPredicate>
+        size_type erase_all_if(UnaryPredicate pred) {
+            std::lock_guard<std::mutex> lock(_mutex);
+            auto copied_container = std::make_shared<container_type>(*_shared_container);
+            auto it = std::remove_if(copied_container->begin(), copied_container->end(), std::move(pred));
+            auto result = copied_container->end() - it;
+            copied_container->erase(it, copied_container->end());
+            _shared_container = std::move(copied_container);
+            return result;
         }
 
         /**
@@ -867,11 +1100,11 @@ namespace fe {
          *
          *  @param value The new element is initialized as a copy of this value.
          */
-        void push_back(const value_type &value) {
+        void push_back(const_reference value) {
             std::lock_guard<std::mutex> lock(_mutex);
             auto copied_container = std::make_shared<container_type>(*_shared_container);
             copied_container->push_back(value);
-            _shared_container = copied_container;
+            _shared_container = std::move(copied_container);
         }
 
         /**
@@ -884,7 +1117,96 @@ namespace fe {
             std::lock_guard<std::mutex> lock(_mutex);
             auto copied_container = std::make_shared<container_type>(*_shared_container);
             copied_container->push_back(std::move(value));
-            _shared_container = copied_container;
+            _shared_container = std::move(copied_container);
+        }
+
+        /**
+         *  Adds elements from range [first, last) to the end.
+         *  This operation makes a fresh copy of the underlying container.
+         *
+         *  @param first The iterator that appoints the top of the range.
+         *  @param last  The iterator that appoints the last next of the range.
+         */
+        template <class InputIterator>
+        void push_back(InputIterator first, InputIterator last) {
+            std::lock_guard<std::mutex> lock(_mutex);
+            auto copied_container = std::make_shared<container_type>(*_shared_container);
+            while (first != last) {
+                copied_container->push_back(*first);
+                ++first;
+            }
+            _shared_container = std::move(copied_container);
+        }
+
+        /**
+         *  Adds the element to the end if not present.
+         *  This operation makes a fresh copy of the underlying container.
+         *
+         *  @param value The new element is initialized as a copy of this value.
+         *
+         *  @return true if the element was added.
+         */
+        bool push_back_if_absent(const_reference value) {
+            std::lock_guard<std::mutex> lock(_mutex);
+            auto it = std::find(_shared_container->begin(), _shared_container->end(), value);
+            if (it != _shared_container->end()) {
+                return false;
+            } else {
+                auto copied_container = std::make_shared<container_type>(*_shared_container);
+                copied_container->push_back(value);
+                _shared_container = std::move(copied_container);
+                return true;
+            }
+        }
+
+        /**
+         *  Adds the element to the end if not present.
+         *  If the element was not added, the given value is not moved.
+         *  This operation makes a fresh copy of the underlying container.
+         *
+         *  @param value The value to be moved into the new element.
+         *
+         *  @return true if the element was added.
+         */
+        bool push_back_if_absent(value_type &&value) {
+            std::lock_guard<std::mutex> lock(_mutex);
+            auto it = std::find(_shared_container->begin(), _shared_container->end(), value);
+            if (it != _shared_container->end()) {
+                return false;
+            } else {
+                auto copied_container = std::make_shared<container_type>(*_shared_container);
+                copied_container->push_back(std::move(value));
+                _shared_container = std::move(copied_container);
+                return true;
+            }
+        }
+
+        /**
+         *  Adds elements that are not already contained in this container from range [first, last) to the end.
+         *  This operation makes a fresh copy of the underlying container.
+         *
+         *  @param first The iterator that appoints the top of the range.
+         *  @param last  The iterator that appoints the last next of the range.
+         *
+         *  @return The number of elements added.
+         */
+        template <class InputIterator>
+        size_type push_back_if_absent(InputIterator first, InputIterator last) {
+            std::lock_guard<std::mutex> lock(_mutex);
+            auto copied_container = _shared_container;
+            size_type result = 0;
+            while (first != last) {
+                auto it = std::find(copied_container->begin(), copied_container->end(), *first);
+                if (it == copied_container->end()) {
+                    if (result++ == 0) {
+                        copied_container = std::make_shared<container_type>(*copied_container);
+                    }
+                    copied_container->push_back(*first);
+                }
+                ++first;
+            }
+            _shared_container = std::move(copied_container);
+            return result;
         }
 
         /**
@@ -898,7 +1220,7 @@ namespace fe {
             std::lock_guard<std::mutex> lock(_mutex);
             auto copied_container = std::make_shared<container_type>(*_shared_container);
             copied_container->emplace_back(std::forward<ArgTypes>(args)...);
-            _shared_container = copied_container;
+            _shared_container = std::move(copied_container);
         }
 
         /**
@@ -909,7 +1231,7 @@ namespace fe {
             std::lock_guard<std::mutex> lock(_mutex);
             auto copied_container = std::make_shared<container_type>(*_shared_container);
             copied_container->pop_back();
-            _shared_container = copied_container;
+            _shared_container = std::move(copied_container);
         }
 
         /**
@@ -923,7 +1245,7 @@ namespace fe {
             std::lock_guard<std::mutex> lock(_mutex);
             auto copied_container = std::make_shared<container_type>(*_shared_container);
             copied_container->resize(count);
-            _shared_container = copied_container;
+            _shared_container = std::move(copied_container);
         }
 
         /**
@@ -934,11 +1256,11 @@ namespace fe {
          *  @param count The new size of the container.
          *  @param value The value to initialize the new elements with.
          */
-        void resize(size_type count, const T &value) {
+        void resize(size_type count, const_reference &value) {
             std::lock_guard<std::mutex> lock(_mutex);
             auto copied_container = std::make_shared<container_type>(*_shared_container);
             copied_container->resize(count, value);
-            _shared_container = copied_container;
+            _shared_container = std::move(copied_container);
         }
 
         /**
@@ -956,8 +1278,8 @@ namespace fe {
 
             copied_container->swap(*other_copied_container);
 
-            _shared_container = copied_container;
-            other._shared_container = other_copied_container;
+            _shared_container = std::move(copied_container);
+            other._shared_container = std::move(other_copied_container);
         }
 
         /**
@@ -970,7 +1292,57 @@ namespace fe {
             std::lock_guard<std::mutex> lock(_mutex);
             auto copied_container = std::make_shared<container_type>(*_shared_container);
             copied_container->swap(other);
-            _shared_container = copied_container;
+            _shared_container = std::move(copied_container);
+        }
+
+        /**
+         *  Sorts the elements into ascending order.
+         *  This operation makes a fresh copy of the underlying container.
+         */
+        void sort() {
+            std::lock_guard<std::mutex> lock(_mutex);
+            auto copied_container = std::make_shared<container_type>(*_shared_container);
+            std::sort(copied_container->begin(), copied_container->end());
+            _shared_container = std::move(copied_container);
+        }
+
+        /**
+         *  Sorts the elements into ascending order.
+         *  This operation makes a fresh copy of the underlying container.
+         *
+         *  @param comp The binary function that returns ​true if the first argument is less than the second.
+         */
+        template <class Compare>
+        void sort(Compare comp) {
+            std::lock_guard<std::mutex> lock(_mutex);
+            auto copied_container = std::make_shared<container_type>(*_shared_container);
+            std::sort(copied_container->begin(), copied_container->end(), std::move(comp));
+            _shared_container = std::move(copied_container);
+        }
+
+        /**
+         *  Sorts the elements into ascending order, while preserving order between equal elements.
+         *  This operation makes a fresh copy of the underlying container.
+         */
+        void stable_sort() {
+            std::lock_guard<std::mutex> lock(_mutex);
+            auto copied_container = std::make_shared<container_type>(*_shared_container);
+            std::stable_sort(copied_container->begin(), copied_container->end());
+            _shared_container = std::move(copied_container);
+        }
+
+        /**
+         *  Sorts the elements into ascending order, while preserving order between equal elements.
+         *  This operation makes a fresh copy of the underlying container.
+         *
+         *  @param comp The binary function that returns ​true if the first argument is less than the second.
+         */
+        template <class Compare>
+        void stable_sort(Compare comp) {
+            std::lock_guard<std::mutex> lock(_mutex);
+            auto copied_container = std::make_shared<container_type>(*_shared_container);
+            std::stable_sort(copied_container->begin(), copied_container->end(), std::move(comp));
+            _shared_container = std::move(copied_container);
         }
 
         /**
