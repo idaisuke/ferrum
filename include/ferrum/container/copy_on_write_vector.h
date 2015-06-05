@@ -1068,7 +1068,7 @@ namespace fe {
         }
 
         /**
-         *  Erases the first element for which the given predicate returns true with the given value.
+         *  Erases the first element for which the given predicate returns true.
          *  This operation makes a fresh copy of the underlying container.
          *
          *  @param pred The unary predicate which returns ​true if the element value should be erased.
@@ -1090,7 +1090,7 @@ namespace fe {
         }
 
         /**
-         *  Erases all elements for which the given predicate returns true with the given value.
+         *  Erases all elements for which the given predicate returns true.
          *  This operation makes a fresh copy of the underlying container.
          *
          *  @param pred The unary predicate which returns ​true if the element value should be erased.
