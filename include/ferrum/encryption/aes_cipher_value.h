@@ -45,7 +45,7 @@ namespace fe {
      *  ~~~~~~~~~~
      *  fe::aes_cipher_value<int> encrypted_value;
      *
-     *  // encrypt.
+     *  // encrypt
      *  encrypted_value = 12345;
      *
      *  // decrypt
@@ -55,7 +55,7 @@ namespace fe {
      *  @tparam T The type of the unencrypted value.
      */
     template <class T>
-    using aes_cipher_value = cipher_value<T, aes_cipher<T>>;
+    using aes_cipher_value = cipher_value<T, aes_cipher>;
 
     class aes_cipher_value_random_engine_holder {
     private:

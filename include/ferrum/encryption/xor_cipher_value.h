@@ -40,7 +40,7 @@ namespace fe {
      *  ~~~~~~~~~~
      *  fe::xor_cipher_value<int> encrypted_value;
      *
-     *  // encrypt.
+     *  // encrypt
      *  encrypted_value = 12345;
      *
      *  // decrypt
@@ -50,7 +50,7 @@ namespace fe {
      *  @tparam T The type of the unencrypted value.
      */
     template <class T>
-    using xor_cipher_value = cipher_value<T, xor_cipher<T>>;
+    using xor_cipher_value = cipher_value<T, xor_cipher>;
 
     template <class T, class>
     class basic_int_xor_cipher;
