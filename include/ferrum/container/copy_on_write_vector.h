@@ -47,7 +47,7 @@ namespace fe {
      *  for (int elem : snapshot) {
      *      printf("elem = %d\n", elem);
      *
-     *      // mutative operation is possible during scanning of the iterator.
+     *      // any mutative operations are possible during scanning of the iterator.
      *      vec.push_back(999);
      *  }
      *  ~~~~~~~~~~
