@@ -32,7 +32,7 @@ namespace fe {
      *  Provides a value that is encrypted that can be used in the same way as the primitive type.
      *
      *  ~~~~~~~~~~
-     *  fe::cipher_value<int, fe::xor_cipher<int>> encrypted_value;
+     *  fe::cipher_value<int, fe::xor_cipher> encrypted_value;
      *
      *  // encrypt
      *  encrypted_value = 12345;
@@ -249,18 +249,16 @@ namespace fe {
     }
 
     template <class T, template <class> class Cipher, class ArgType>
-    auto operator+(const cipher_value<T, Cipher> &lhs, ArgType rhs) -> typename std::enable_if<
-        std::is_convertible<ArgType, T>::value &&
-            !std::is_same<typename cipher_value<decltype(std::declval<T>() + std::declval<ArgType>()), Cipher>::value,
-                          ArgType>::value,
-        cipher_value<T, Cipher>>::type {
+    auto operator+(const cipher_value<T, Cipher> &lhs, ArgType rhs) ->
+        typename std::enable_if<std::is_integral<ArgType>::value || std::is_floating_point<ArgType>::value,
+                                cipher_value<decltype(std::declval<T>() + std::declval<ArgType>()), Cipher>>::type {
         return static_cast<T>(lhs) + rhs;
     }
 
     template <class T, template <class> class Cipher, class ArgType>
     auto operator+(ArgType lhs, const cipher_value<T, Cipher> &rhs) ->
         typename std::enable_if<std::is_integral<ArgType>::value || std::is_floating_point<ArgType>::value,
-                                cipher_value<decltype(std::declval<T>() + std::declval<ArgType>()), Cipher>>::type {
+                                cipher_value<decltype(std::declval<ArgType>() + std::declval<T>()), Cipher>>::type {
         return lhs + static_cast<T>(rhs);
     }
 
@@ -271,18 +269,16 @@ namespace fe {
     }
 
     template <class T, template <class> class Cipher, class ArgType>
-    auto operator-(const cipher_value<T, Cipher> &lhs, ArgType rhs) -> typename std::enable_if<
-        std::is_convertible<ArgType, T>::value &&
-            !std::is_same<typename cipher_value<decltype(std::declval<T>() - std::declval<ArgType>()), Cipher>::value,
-                          ArgType>::value,
-        cipher_value<T, Cipher>>::type {
+    auto operator-(const cipher_value<T, Cipher> &lhs, ArgType rhs) ->
+        typename std::enable_if<std::is_integral<ArgType>::value || std::is_floating_point<ArgType>::value,
+                                cipher_value<decltype(std::declval<T>() - std::declval<ArgType>()), Cipher>>::type {
         return static_cast<T>(lhs) - rhs;
     }
 
     template <class T, template <class> class Cipher, class ArgType>
     auto operator-(ArgType lhs, const cipher_value<T, Cipher> &rhs) ->
         typename std::enable_if<std::is_integral<ArgType>::value || std::is_floating_point<ArgType>::value,
-                                cipher_value<decltype(std::declval<T>() - std::declval<ArgType>()), Cipher>>::type {
+                                cipher_value<decltype(std::declval<ArgType>() - std::declval<T>()), Cipher>>::type {
         return lhs - static_cast<T>(rhs);
     }
 
@@ -293,18 +289,16 @@ namespace fe {
     }
 
     template <class T, template <class> class Cipher, class ArgType>
-    auto operator*(const cipher_value<T, Cipher> &lhs, ArgType rhs) -> typename std::enable_if<
-        std::is_convertible<ArgType, T>::value &&
-            !std::is_same<typename cipher_value<decltype(std::declval<T>() * std::declval<ArgType>()), Cipher>::value,
-                          ArgType>::value,
-        cipher_value<T, Cipher>>::type {
+    auto operator*(const cipher_value<T, Cipher> &lhs, ArgType rhs) ->
+        typename std::enable_if<std::is_integral<ArgType>::value || std::is_floating_point<ArgType>::value,
+                                cipher_value<decltype(std::declval<T>() * std::declval<ArgType>()), Cipher>>::type {
         return static_cast<T>(lhs) * rhs;
     }
 
     template <class T, template <class> class Cipher, class ArgType>
     auto operator*(ArgType lhs, const cipher_value<T, Cipher> &rhs) ->
         typename std::enable_if<std::is_integral<ArgType>::value || std::is_floating_point<ArgType>::value,
-                                cipher_value<decltype(std::declval<T>() * std::declval<ArgType>()), Cipher>>::type {
+                                cipher_value<decltype(std::declval<ArgType>() * std::declval<T>()), Cipher>>::type {
         return lhs * static_cast<T>(rhs);
     }
 
@@ -315,19 +309,59 @@ namespace fe {
     }
 
     template <class T, template <class> class Cipher, class ArgType>
-    auto operator/(const cipher_value<T, Cipher> &lhs, ArgType rhs) -> typename std::enable_if<
-        std::is_convertible<ArgType, T>::value &&
-            !std::is_same<typename cipher_value<decltype(std::declval<T>() / std::declval<ArgType>()), Cipher>::value,
-                          ArgType>::value,
-        cipher_value<T, Cipher>>::type {
+    auto operator/(const cipher_value<T, Cipher> &lhs, ArgType rhs) ->
+        typename std::enable_if<std::is_integral<ArgType>::value || std::is_floating_point<ArgType>::value,
+                                cipher_value<decltype(std::declval<T>() / std::declval<ArgType>()), Cipher>>::type {
         return static_cast<T>(lhs) / rhs;
     }
 
     template <class T, template <class> class Cipher, class ArgType>
     auto operator/(ArgType lhs, const cipher_value<T, Cipher> &rhs) ->
         typename std::enable_if<std::is_integral<ArgType>::value || std::is_floating_point<ArgType>::value,
-                                cipher_value<decltype(std::declval<T>() / std::declval<ArgType>()), Cipher>>::type {
+                                cipher_value<decltype(std::declval<ArgType>() / std::declval<T>()), Cipher>>::type {
         return lhs / static_cast<T>(rhs);
+    }
+
+    template <class T1, template <class> class Cipher1, class T2, template <class> class Cipher2>
+    auto operator<<(const cipher_value<T1, Cipher1> &lhs, const cipher_value<T2, Cipher2> &rhs) ->
+        typename std::enable_if<std::is_integral<T1>::value && std::is_integral<T2>::value,
+                                cipher_value<decltype(std::declval<T1>() << std::declval<T2>()), Cipher1>>::type {
+        return static_cast<T1>(lhs) << static_cast<T2>(rhs);
+    }
+
+    template <class T, template <class> class Cipher, class ArgType>
+    auto operator<<(const cipher_value<T, Cipher> &lhs, ArgType rhs) ->
+        typename std::enable_if<std::is_integral<T>::value && std::is_integral<ArgType>::value,
+                                cipher_value<decltype(std::declval<T>() << std::declval<ArgType>()), Cipher>>::type {
+        return static_cast<T>(lhs) << rhs;
+    }
+
+    template <class T, template <class> class Cipher, class ArgType>
+    auto operator<<(ArgType lhs, const cipher_value<T, Cipher> &rhs) ->
+        typename std::enable_if<std::is_integral<T>::value && std::is_integral<ArgType>::value,
+                                cipher_value<decltype(std::declval<ArgType>() << std::declval<T>()), Cipher>>::type {
+        return lhs << static_cast<T>(rhs);
+    }
+
+    template <class T1, template <class> class Cipher1, class T2, template <class> class Cipher2>
+    auto operator>>(const cipher_value<T1, Cipher1> &lhs, const cipher_value<T2, Cipher2> &rhs) ->
+        typename std::enable_if<std::is_integral<T1>::value && std::is_integral<T2>::value,
+                                cipher_value<decltype(std::declval<T1>() >> std::declval<T2>()), Cipher1>>::type {
+        return static_cast<T1>(lhs) >> static_cast<T2>(rhs);
+    }
+
+    template <class T, template <class> class Cipher, class ArgType>
+    auto operator>>(const cipher_value<T, Cipher> &lhs, ArgType rhs) ->
+        typename std::enable_if<std::is_integral<T>::value && std::is_integral<ArgType>::value,
+                                cipher_value<decltype(std::declval<T>() >> std::declval<ArgType>()), Cipher>>::type {
+        return static_cast<T>(lhs) >> rhs;
+    }
+
+    template <class T, template <class> class Cipher, class ArgType>
+    auto operator>>(ArgType lhs, const cipher_value<T, Cipher> &rhs) ->
+        typename std::enable_if<std::is_integral<T>::value && std::is_integral<ArgType>::value,
+                                cipher_value<decltype(std::declval<ArgType>() >> std::declval<T>()), Cipher>>::type {
+        return lhs >> static_cast<T>(rhs);
     }
 
     template <class T1, template <class> class Cipher1, class T2, template <class> class Cipher2>
