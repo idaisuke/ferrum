@@ -137,9 +137,6 @@ namespace fe {
             int len;
             EVP_DecryptUpdate(&context, out.bytes.data(), &len, encrypted.data(), static_cast<int>(encrypted.size()));
 
-            converter in;
-            in.bytes = encrypted;
-
             return out.value;
         }
 
