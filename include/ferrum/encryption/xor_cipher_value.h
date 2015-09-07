@@ -68,7 +68,7 @@ namespace fe {
         }
 
         static std::mt19937 &get() {
-            static std::mt19937 engine(get_seed());
+            thread_local std::mt19937 engine(get_seed());
             return engine;
         }
 
